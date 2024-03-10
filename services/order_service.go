@@ -1,8 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"gorm.io/gorm"
+	"log"
+	"net/http"
 	"orderservice/models"
 	pb "orderservice/proto"
 )
@@ -50,6 +55,8 @@ func (server *OrderService) Create(ctx context.Context, req *pb.CreateOrderReque
 
 	server.Database.Create(&order)
 
+	createDeliveryForOrder(order)
+
 	return &pb.CreateOrderResponse{
 		OrderId: order.ID,
 		Restaurant: &pb.Restaurant{
@@ -70,4 +77,36 @@ func (server *OrderService) Create(ctx context.Context, req *pb.CreateOrderReque
 		},
 		TotalPrice: order.TotalPrice,
 	}, nil
+}
+
+func createDeliveryForOrder(order models.Order) {
+	url := "http://localhost:8090/fullfilment-management/deliveries"
+	payload := map[string]interface{}{
+		"orderId":    order.ID,
+		"totalPrice": order.TotalPrice,
+		"pickupLocation": map[string]interface{}{
+			"latitude":  order.Restaurant.Latitude,
+			"longitude": order.Restaurant.Longitude,
+		},
+		"dropLocation": map[string]interface{}{
+			"latitude":  order.User.Latitude,
+			"longitude": order.User.Longitude,
+		},
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println(": %s", err)
+		return
+	}
+
+	response, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println(": %s", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 201 {
+		log.Fatalf("Couldn't assign Delivery Partner for your order")
+	}
 }
