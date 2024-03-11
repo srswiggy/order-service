@@ -96,13 +96,13 @@ func createDeliveryForOrder(order models.Order) {
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println(": %s", err)
+		fmt.Println(err)
 		return
 	}
 
 	response, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println(": %s", err)
+		fmt.Println(err)
 	}
 	defer response.Body.Close()
 
